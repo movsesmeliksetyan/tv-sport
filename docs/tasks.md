@@ -61,25 +61,19 @@ Legend: `[ ]` todo · `[~]` in progress · `[x]` done · **(blocker)** must clea
 
 ---
 
-## Phase 3 — TV App: Skeleton  *(∥ with Phase 1, against mock)*
+## Phase 3 — TV App  *(migrated to Jetpack Compose for TV)*
 
-- [ ] **T3.1 API client + DTOs** — Generate DTOs from `openapi.yaml`; Retrofit/OkHttp client; coroutine repository.
-  - Deps: T0.3, T0.4 · **(blocker for T3.2)**
-  - Done when: client fetches from the mock server and maps to DTOs in a unit test.
+> **UI stack change:** replaced classic Leanback with **Jetpack Compose for TV** (`androidx.tv:tv-material` 1.0.0 + Compose BOM, Coil for images) to match the modern Android TV design system (Featured hero, focus-scaled cards). Data layer (Retrofit/Gson) unchanged.
 
-- [ ] **T3.2 Browse screen (Leanback)** — `BrowseSupportFragment` with rows "Live now", "Football today", "Hockey today"; focusable cards (teams, kickoff, tournament) with Glide-loaded logos.
-  - Deps: T3.1 · **(blocker for T3.3)**
-  - Done when: rows render mock data; full D-pad navigation works on emulator.
+- [x] **T3.1 API client + DTOs** — Retrofit/Gson client + DTOs from the contract + `MatchRepository` (`data/`). Drives the live UI on the emulator.
 
-- [ ] **T3.3 LIVE/link badge** — Card overlay driven by `hasStream` (FR-2, FR-4).
-  - Deps: T3.2
-  - Done when: cards visibly differ for `hasStream` true vs false.
+- [x] **T3.2 Browse screen** — Compose `BrowseScreen`: a `LazyColumn` with a **Featured hero** + `LazyRow` rows "Live now / Football / Hockey" of focus-scaled `MatchCard`s; overscan-safe margins, enlarged TV type, dark high-contrast theme. **Verified on the Television_4K emulator**: real mock data, real team logos (Coil), D-pad navigation. See `docs/screenshot-browse.png`, `screenshot-rows.png`.
 
-- [ ] **T3.4 Detail screen** — Match info (channel, stadium, time); "Watch" button enabled only when `hasStream` (FR-10).
-  - Deps: T3.2
-  - Done when: selecting a card opens detail; Watch enabled/disabled correctly.
+- [x] **T3.3 LIVE/link badge** — `LiveBadge` on cards + hero, driven by `hasStream`/status (FR-2, FR-4). Visible in screenshots.
 
-- [ ] **T3.5 Polling refresh** — Lifecycle-aware repository polling every 2–5 min; pause when backgrounded; swap mock → real API base URL.
+- [x] **T3.4 Detail screen** — `DetailScreen`: teams + logos, tournament, kickoff, channel; "Watch on Ace Stream" button shown only when live, else the "links appear ~1h before" message (FR-8/FR-10). Card → detail nav + Back verified. See `docs/screenshot-detail.png`.
+
+- [ ] **T3.5 Polling refresh** — Lifecycle-aware polling every 2–5 min; pause when backgrounded; LAN base URL for the Pi.
   - Deps: T3.1, T1.4
   - Done when: list auto-updates against the real backend; no polling while backgrounded.
 

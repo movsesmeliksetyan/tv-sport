@@ -1,4 +1,7 @@
 <resources>
-    <!-- Leanback base theme for the browse experience. -->
-    <style name="Theme.PimpleTV" parent="Theme.Leanback" />
+    <!-- Compose drives all UI; the activity just needs a dark, no-action-bar shell. -->
+    <style name="Theme.PimpleTV" parent="@android:style/Theme.Material.NoActionBar">
+        <item name="android:windowBackground">@color/bg</item>
+        <item name="android:statusBarColor">@color/bg</item>
+    </style>
 </resources>
