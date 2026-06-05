@@ -1,0 +1,8 @@
+# Runtime deps — all have arm64 wheels (Raspberry Pi 64-bit OS). No headless browser here.
+fastapi==0.115.6
+uvicorn[standard]==0.34.0
+pydantic==2.10.4
+pydantic-settings==2.7.1
+httpx==0.28.1
+selectolax==0.3.27        # fast HTML parsing (lxml-free, light on Pi)
+apscheduler==3.11.0

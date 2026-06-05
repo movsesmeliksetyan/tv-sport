@@ -1,0 +1,4 @@
+# Recon/dev-only deps. NOT installed in the Pi runtime image.
+# Used by scripts/recon_capture.py to capture the JS-injected stream payload (T0.1).
+-r requirements.txt
+playwright==1.49.1

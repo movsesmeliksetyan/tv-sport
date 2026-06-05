@@ -1,0 +1,16 @@
+# Raspberry Pi deployment. From backend/:  docker compose up -d --build
+services:
+  api:
+    build: .
+    image: pimpletv-api:local
+    container_name: pimpletv-api
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    environment:
+      # Flip to false once the Phase 1 crawler is wired.
+      PTV_MOCK_MODE: "true"
+      PTV_LISTING_REFRESH_SECONDS: "180"
+      PTV_STREAM_WINDOW_MINUTES: "75"
+      PTV_TIMEZONE: "Europe/Moscow"
+    # env_file: .env   # uncomment to override from a local .env

@@ -1,0 +1,176 @@
+openapi: 3.1.0
+info:
+  title: PimpleTV TV Launcher API
+  version: 0.1.0
+  description: >
+    Backend scraper/API for the Android TV launcher. Serves match metadata from
+    pimpletv.ru and resolved Ace Stream content IDs. All responses are served
+    from cache; requests never block on a live scrape.
+servers:
+  - url: http://raspberrypi.local:8000
+    description: Local Raspberry Pi (LAN)
+  - url: http://localhost:8000
+    description: Local dev
+
+paths:
+  /api/matches:
+    get:
+      summary: List matches (metadata + hasStream flag; streams omitted)
+      operationId: listMatches
+      parameters:
+        - name: sport
+          in: query
+          required: false
+          schema: { type: string, enum: [football, hockey] }
+          description: Filter by sport. Omit for all.
+        - name: window
+          in: query
+          required: false
+          schema: { type: string, enum: [today, live], default: today }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [matches, lastUpdated]
+                properties:
+                  matches:
+                    type: array
+                    items: { $ref: "#/components/schemas/MatchSummary" }
+                  lastUpdated:
+                    type: string
+                    format: date-time
+                    description: When the backend last refreshed the listing.
+              example:
+                lastUpdated: "2026-06-05T18:32:10+03:00"
+                matches:
+                  - id: "69175"
+                    sport: football
+                    tournament: "Friendly. National teams"
+                    home: { name: "Russia", logo: "https://www.pimpletv.ru/wp-content/uploads/logo/football/int/russia.png" }
+                    away: { name: "Burkina Faso", logo: "https://www.pimpletv.ru/wp-content/uploads/logo/football/int/burkina_faso.png" }
+                    kickoff: "2026-06-05T20:00:00+03:00"
+                    channel: "MATCH! HD"
+                    status: scheduled
+                    hasStream: false
+                    lastUpdated: "2026-06-05T18:32:10+03:00"
+
+  /api/matches/{id}:
+    get:
+      summary: Full match detail incl. resolved streams
+      operationId: getMatch
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Match" }
+              example:
+                id: "69175"
+                sport: football
+                tournament: "Friendly. National teams"
+                home: { name: "Russia", logo: "https://www.pimpletv.ru/wp-content/uploads/logo/football/int/russia.png" }
+                away: { name: "Burkina Faso", logo: "https://www.pimpletv.ru/wp-content/uploads/logo/football/int/burkina_faso.png" }
+                kickoff: "2026-06-05T20:00:00+03:00"
+                channel: "MATCH! HD"
+                stadium: "Volgograd Arena"
+                status: live
+                hasStream: true
+                lastUpdated: "2026-06-05T19:05:44+03:00"
+                streams:
+                  - type: acestream
+                    contentId: "a1b2c3d4e5f60718293a4b5c6d7e8f9012345678"
+                    quality: HD
+                    language: ru
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+
+  /api/health:
+    get:
+      summary: Scraper freshness / liveness
+      operationId: health
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [status, lastSuccessfulCrawl, matchCount]
+                properties:
+                  status: { type: string, enum: [healthy, degraded, unhealthy] }
+                  lastSuccessfulCrawl: { type: string, format: date-time, nullable: true }
+                  matchCount: { type: integer }
+                  liveWindowMatches: { type: integer }
+              example:
+                status: healthy
+                lastSuccessfulCrawl: "2026-06-05T18:32:10+03:00"
+                matchCount: 14
+                liveWindowMatches: 2
+
+components:
+  schemas:
+    Team:
+      type: object
+      required: [name]
+      properties:
+        name: { type: string }
+        logo: { type: string, format: uri, nullable: true }
+
+    Stream:
+      type: object
+      required: [type, contentId]
+      properties:
+        type: { type: string, enum: [acestream], description: "v1 = acestream only; SopCast out of scope" }
+        contentId:
+          type: string
+          pattern: "^[0-9a-fA-F]{40}$"
+          description: 40-char hex Ace Stream content ID.
+        quality: { type: string, nullable: true, example: HD }
+        language: { type: string, nullable: true, example: ru }
+
+    MatchSummary:
+      type: object
+      required: [id, sport, home, away, kickoff, status, hasStream]
+      properties:
+        id: { type: string }
+        sport: { type: string, enum: [football, hockey] }
+        tournament: { type: string, nullable: true }
+        home: { $ref: "#/components/schemas/Team" }
+        away: { $ref: "#/components/schemas/Team" }
+        kickoff: { type: string, format: date-time, description: "ISO-8601 with Europe/Moscow offset." }
+        channel: { type: string, nullable: true }
+        status: { type: string, enum: [scheduled, live, finished] }
+        hasStream: { type: boolean, description: "true only when >=1 valid stream resolved." }
+        lastUpdated: { type: string, format: date-time }
+
+    Match:
+      allOf:
+        - $ref: "#/components/schemas/MatchSummary"
+        - type: object
+          properties:
+            stadium: { type: string, nullable: true }
+            streams:
+              type: array
+              items: { $ref: "#/components/schemas/Stream" }
+
+    Error:
+      type: object
+      required: [error]
+      properties:
+        error:
+          type: object
+          required: [code, message]
+          properties:
+            code: { type: string }
+            message: { type: string }
