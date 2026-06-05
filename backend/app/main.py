@@ -26,11 +26,15 @@ async def lifespan(app: FastAPI):
     if settings.mock_mode:
         store.replace_all(sample_matches())
         log.info("MOCK_MODE: seeded %d sample matches", store.count())
+        yield
     else:
-        # Phase 1 (T1.3): start APScheduler — listing crawl + window-gated stream resolution.
-        log.info("LIVE mode: scheduler not yet wired (Phase 1). Store starts empty.")
-    yield
-    # shutdown hooks (scheduler.shutdown()) go here in Phase 1.
+        from .scheduler import scheduler  # local import: avoids httpx/apscheduler in mock runs
+        await scheduler.start()
+        log.info("LIVE mode: crawler + resolver scheduler running")
+        try:
+            yield
+        finally:
+            await scheduler.stop()
 
 
 app = FastAPI(title="PimpleTV TV Launcher API", version="0.1.0", lifespan=lifespan)
