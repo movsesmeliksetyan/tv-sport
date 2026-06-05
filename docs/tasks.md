@@ -32,25 +32,17 @@ Legend: `[ ]` todo · `[~]` in progress · `[x]` done · **(blocker)** must clea
 
 ## Phase 1 — Backend: Crawler + API  *(∥ with Phase 3)*
 
-- [ ] **T1.1 Match model + normalizer** — Pydantic `Match`/`Team`/`Stream` models matching the contract; helpers to validate 40-char hex content IDs and parse kickoff to ISO+tz.
-  - Deps: T0.3
-  - Done when: model round-trips the OpenAPI examples; unit tests pass.
+- [x] **T1.1 Match model + normalizer** — Pydantic models (`app/models.py`) match the contract; `crawler.build_kickoff` parses HH:MM → tz-aware datetime (Europe/Moscow), `derive_status` from kickoff vs now, 40-hex validation lives in the `Stream` model. Tested.
 
-- [ ] **T1.2 Listing crawler** — Fetch + parse the three listing pages → `Match[]` metadata (no streams). Plain HTTP (httpx), fixture-tested.
-  - Deps: T0.2, T1.1 · **(blocker for T1.4)**
-  - Done when: crawler parses `listing_*.html` fixtures into correct `Match` objects; live smoke run returns today's matches.
+- [x] **T1.2 Listing crawler** — `app/scraper/crawler.py`: httpx + selectolax, selectors per recon §2. Parses `listing_*.html` fixtures (7 tests) **and** verified live — real crawl returns today's 6 matches with names/times/channels/logos. Empty hockey handled.
 
-- [ ] **T1.3 Cache + scheduler** — In-memory (or Redis) store; APScheduler job refreshing listings every 2–5 min (configurable).
-  - Deps: T1.1
-  - Done when: store holds latest crawl; refresh interval configurable via env.
+- [x] **T1.3 Cache + scheduler** — `app/scheduler.py`: `AsyncIOScheduler`, listing refresh + resolution jobs on env-configurable cadences; `store.merge_listing` carries resolved streams across re-crawls. Initial crawl on boot so the API is never empty.
 
-- [ ] **T1.4 API endpoints** — FastAPI serving `/api/matches`, `/api/matches/{id}`, `/api/health` from cache (never block on a live scrape).
-  - Deps: T1.2, T1.3 · **(blocker for T3.5)**
-  - Done when: endpoints return real crawled data and pass contract validation against `openapi.yaml`.
+- [x] **T1.4 API endpoints** — Endpoints now serve **real crawled data** in live mode (`PTV_MOCK_MODE=false`). Verified: app boots → scheduler → 6 real matches via `/api/matches`, health green. Requests served from cache, never blocking on a scrape.
 
-- [ ] **T1.5 Health & observability** — `/api/health` reports last successful crawl time + match count; alarm/log when 0 matches parsed (R2 early-warning).
-  - Deps: T1.4
-  - Done when: health flips to unhealthy on a forced parse failure.
+- [x] **T1.5 Health & observability** — `/api/health` reports `lastSuccessfulCrawl` + counts; crawler logs an **R2 error on 0-parse** and health returns `unhealthy` when `matchCount==0`.
+
+> **Phase 1 complete + T2.3 fully wired:** the scheduler's `resolve_due` calls the Phase 2 resolver for in-window matches and flips `hasStream`/`streams` (clearing on finish). Match-page URL uses an id-only slug, which the site 301-redirects to canonical (`follow_redirects=True`). Live stream resolution itself stays **provisional** on the real markup (T0.1) — tonight's 17:45 window is the first real test.
 
 ---
 
