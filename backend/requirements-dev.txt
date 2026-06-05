@@ -1,0 +1,4 @@
+# Test/dev deps. Not in the Pi runtime image.
+-r requirements.txt
+pytest==8.3.4
+pytest-asyncio==0.25.0
