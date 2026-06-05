@@ -1,0 +1,12 @@
+# IDE / editor
+.idea/
+*.iml
+
+# Claude local settings (machine-specific)
+.claude/settings.local.json
+
+# Recon poller runtime log (regenerated each run)
+backend/tests/fixtures/recon_poll.log
+
+# OS
+.DS_Store

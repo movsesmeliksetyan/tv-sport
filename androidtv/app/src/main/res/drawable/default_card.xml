@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Fallback art for a match card before logos load. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="160dp"
+    android:height="120dp"
+    android:viewportWidth="160"
+    android:viewportHeight="120">
+    <path
+        android:fillColor="#263238"
+        android:pathData="M0,0h160v120h-160z" />
+    <path
+        android:fillColor="#FFC107"
+        android:pathData="M80,40 a20,20 0 1,0 0.1,0 z M80,48 a12,12 0 1,1 -0.1,0 z" />
+</vector>

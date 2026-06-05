@@ -1,0 +1,4 @@
+<resources>
+    <!-- Leanback base theme for the browse experience. -->
+    <style name="Theme.PimpleTV" parent="Theme.Leanback" />
+</resources>
