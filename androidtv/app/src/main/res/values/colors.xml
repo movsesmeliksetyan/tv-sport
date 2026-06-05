@@ -1,0 +1,7 @@
+<resources>
+    <color name="brand_primary">#1B5E20</color>
+    <color name="brand_accent">#FFC107</color>
+    <color name="card_bg">#263238</color>
+    <color name="live_badge">#E53935</color>
+    <color name="banner_bg">#0D2818</color>
+</resources>

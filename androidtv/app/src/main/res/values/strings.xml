@@ -1,0 +1,10 @@
+<resources>
+    <string name="app_name">PimpleTV</string>
+    <string name="browse_title">PimpleTV</string>
+    <string name="row_live">Live now</string>
+    <string name="row_football">Football today</string>
+    <string name="row_hockey">Hockey today</string>
+    <string name="badge_live">LIVE</string>
+    <string name="loading">Loading matches…</string>
+    <string name="error_load">Couldn\'t reach the server. Check the API address.</string>
+</resources>

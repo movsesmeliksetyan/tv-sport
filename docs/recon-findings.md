@@ -46,9 +46,32 @@ Kickoff is **time-only** on listings; the date is "today" (site lists today's ma
   `<p>Ссылки на трансляцию появятся приблизительно за час до эфира.</p>`
   → presence of this string ⇒ `hasStream = false`.
 
-## 4. Stream links — the critical unknown (T0.1 — OPEN)
+## 4. Stream links — the critical unknown (T0.1 — IN PROGRESS)
 
-The Ace Stream / SopCast links are **JS-injected** into `div.tabs-content.active` ~1h before kickoff; they are **not** in the static HTML (confirmed: `acestream://` absent from `match_69175.html`, only the placeholder present).
+### 4a. JS analysis (done) — *the PRD's "JS-injected" assumption looks wrong*
+
+Inspected every script the match page loads:
+
+| Script | What it does | Loads streams? |
+|---|---|---|
+| `themes/rufootballtv/js/ajax-tabs.js` | Tab **switching UI only** (misnamed — no AJAX) | No |
+| `themes/rufootballtv/js/detect.js` | Adblock detection + Melbet ad injection; removes `.tabs` if adblock | No |
+| `twentythirteen/js/functions.js`, `jquery.min.js` | Theme/jQuery boilerplate | No |
+
+**No script fetches stream data.** There is no `admin-ajax`/XHR loader. → Strong hypothesis: the links are **server-side rendered** into `div.tabs-content.active` within the ~1h window, *not* JS-injected. If confirmed, **the Pi scraper needs no browser at all** — plain `httpx` of the match page suffices, and there is no AJAX endpoint to reverse-engineer.
+
+Fixtures saved: `ajax-tabs.js`, `detect.js`.
+
+### 4b. Live capture (running) — cheap-path-first
+
+`backend/scripts/recon_poll.py` (stdlib `urllib`, **no browser**) polls today's match pages every 5 min and captures the first matches whose tab stops showing the placeholder. Confirmed pre-window: it correctly reports the placeholder state as not-populated.
+
+- **If it captures links** → hypothesis confirmed, server-rendered, no browser on the Pi. Document the exact link markup below.
+- **If it times out at kickoff with the placeholder still showing** → links really are JS-injected late; fall back to `scripts/recon_capture.py` (Playwright).
+
+Window math: earliest kickoff today 19:00 MSK → first window ~18:00 MSK / 15:00 UTC.
+
+> ⏳ **Pending:** live-window capture output. The Ace Stream content-ID field path / link markup will be filled in here once `recon_poll.py` captures a populated tab.
 
 **Still required (time-sensitive, manual):** open a match page **within ~1h of kickoff** with browser dev-tools Network panel and capture:
 1. The XHR/fetch **request** the JS makes (URL, method, headers, query/body — likely `admin-ajax.php?action=...` or a custom endpoint).

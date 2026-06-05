@@ -16,7 +16,7 @@ Legend: `[ ]` todo · `[~]` in progress · `[x]` done · **(blocker)** must clea
 - [~] **T0.1 Live-page recon (S1)** — Open a match page within ~1h of kickoff with browser dev-tools. Capture the exact AJAX endpoint + request headers + JSON/HTML response carrying the Ace Stream content IDs.
   - Deps: none · **(blocker for T2.x)**
   - Done when: raw request/response saved to `backend/tests/fixtures/live_match_<id>.{html,json}` and the field path to the 40-char content ID is documented.
-  - **Status:** placeholder-state confirmed (links are JS-injected into `div.tabs-content.active`; absent pre-window). Capture tooling ready: `backend/scripts/recon_capture.py`. **Remaining: run it during a live window** (time-sensitive, manual). See [recon-findings.md §4](recon-findings.md).
+  - **Status:** JS analysis done — **no script fetches stream links** (`ajax-tabs.js` is tab-switching only; `detect.js` is adblock/ads). Hypothesis: links are **server-rendered** within the window, not JS-injected → likely **no browser needed on the Pi**. Cheap-path poller `backend/scripts/recon_poll.py` (stdlib, no browser) is **running** to capture the first live window (~18:00 MSK today); Playwright `recon_capture.py` is the fallback. See [recon-findings.md §4](recon-findings.md).
 
 - [x] **T0.2 Listing-page recon** — Save static HTML of `/`, `/category/football/`, `/category/hockey/` and a few match pages (pre-window). Identify selectors for teams, kickoff, tournament, channel, stadium, logos.
   - Done: fixtures saved under `backend/tests/fixtures/` (`listing_*.html`, `match_69175.html`, `wp_post_69175.json`); selector map in [recon-findings.md](recon-findings.md). Site is WordPress; metadata is in static HTML (no browser needed).
@@ -26,7 +26,7 @@ Legend: `[ ]` todo · `[~]` in progress · `[x]` done · **(blocker)** must clea
 - [x] **T0.4 Stand up mock API server** — FastAPI app runs in `PTV_MOCK_MODE` serving sample matches that satisfy the contract. Smoke-tested: list/detail/health/404/422 all verified. (Chose a FastAPI mock over Prism so it's the same stack as production and runs on the Pi.)
 
 - [x] **T0.5 Repo scaffold (backend)** — `backend/` created: FastAPI app, models, store, config, routes, sample data, **Dockerfile (arm64) + docker-compose**, recon script, README. Runs end-to-end locally.
-  - [ ] **T0.5b androidtv scaffold** — Android Studio Leanback project (min SDK 21). *Pending — needs Android Studio; see note below.*
+  - [x] **T0.5b androidtv scaffold** — Kotlin + Leanback project in `androidtv/` (Gradle Kotlin DSL + version catalog, wrapper included; AGP 8.7.3 / Gradle 8.11.1; minSdk 21 / target 35). Browse skeleton (`BrowseSupportFragment` + `MatchCardPresenter`) wired to the contract via Retrofit/Gson; LEANBACK_LAUNCHER manifest, TV banner, `Theme.Leanback`. **Validated:** Gradle wrapper bootstraps on Studio's bundled JDK 21 and `:app:help` configures cleanly (AGP + catalog resolve). Full APK build pending SDK 35 install on first Studio sync.
 
 ---
 
