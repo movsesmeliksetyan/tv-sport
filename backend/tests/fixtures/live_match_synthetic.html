@@ -1,0 +1,32 @@
+<!--
+  SYNTHETIC fixture — NOT a real capture. Models the EXPECTED populated state of
+  div.tabs-content.active (~1h before kickoff), inferred from recon-findings §4.
+  Replace with a real live_match_<id>.html once recon_poll.py captures one (T0.1),
+  then adjust extractor selectors if the real markup differs.
+-->
+<html lang="ru">
+<body>
+  <div class="match-info">Россия – Буркина-Фасо</div>
+  <div class="tabs">
+    <ul class="tabs-caption">
+      <li class="active">Трансляция</li>
+      <li>Превью</li>
+    </ul>
+    <div class="tabs-content active">
+      <div class="broadcast-links">
+        <p>Ace Stream трансляции:</p>
+        <ul>
+          <li><a class="ace-link" href="acestream://a1b2c3d4e5f60718293a4b5c6d7e8f9012345678">Смотреть HD (ru)</a></li>
+          <li><a class="ace-link" href="acestream://00112233445566778899aabbccddeeff00112233">Смотреть SD</a></li>
+          <li><a href="/engine/getstream?content_id=ffeeddccbbaa99887766554433221100ffeeddcc&amp;name=720p">Резерв 720p en</a></li>
+        </ul>
+        <!-- SopCast must be ignored -->
+        <p><a href="sop://broker.sopcast.com:3912/123456">SopCast</a></p>
+      </div>
+    </div>
+    <div class="tabs-content">
+      <div class="match-text"><h2>Превью матча</h2></div>
+    </div>
+  </div>
+</body>
+</html>

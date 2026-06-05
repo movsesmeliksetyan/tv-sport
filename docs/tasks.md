@@ -56,21 +56,16 @@ Legend: `[ ]` todo · `[~]` in progress · `[x]` done · **(blocker)** must clea
 
 ## Phase 2 — Backend: Stream Extractor
 
-- [ ] **T2.1 Extractor interface + fixture tests** — Define an `Extractor` interface; implement parsing of the S1 payload into `Stream[]`. TDD against `live_match_*` fixtures.
-  - Deps: T0.1, T1.1 · **(blocker for T2.2)**
-  - Done when: extractor returns valid `Stream(type=acestream, contentId=<hex>)` from the fixture; SopCast dropped.
+- [x] **T2.1 Extractor interface + fixture tests** — `Extractor` protocol + `AceStreamHtmlExtractor` (`app/scraper/extractor.py`): anchor-aware + regex sweep, per-link quality/language, dedup, 40-hex validation, SopCast dropped, bare-hex ignored without Ace Stream context. 8 fixture tests pass (positive = synthetic populated tab; negative = real `match_69175.html` placeholder).
+  - **Provisional:** synthetic fixture stands in until the real live payload (T0.1) lands; if real markup differs, adjust only the selectors/patterns — the protocol stays. See [recon-findings.md §4](recon-findings.md).
 
-- [ ] **T2.2 Playwright renderer** — Headless render of a match page in the live window; feed rendered DOM/network to the extractor.
+- [ ] **T2.2 Playwright renderer** — *Likely unnecessary.* JS analysis (recon §4a) found no AJAX loader → links appear server-rendered, so the cheap httpx path (T2.3) should suffice. Keep `recon_capture.py` as fallback; only build this if the live capture proves links are JS-injected late.
   - Deps: T2.1
-  - Done when: against a real live match, renderer + extractor produce a valid content ID end-to-end.
 
-- [ ] **T2.3 Window-gated resolution job** — Scheduler resolves streams only for matches with `kickoff - now <= 75 min`; set `hasStream=true` only when ≥1 valid stream; invalidate after `finished`.
-  - Deps: T2.2, T1.3
-  - Done when: a match flips `hasStream` true within its window and clears after kickoff+duration.
+- [~] **T2.3 Window-gated resolution job** — Core built (`app/scraper/resolver.py`): `in_resolution_window` / `should_resolve` (≤75 min before kickoff, skip finished) + `resolve_streams` cheap-path (httpx GET → extractor, empty on error). 5 tests pass (incl. httpx MockTransport). **Remaining:** wire into the APScheduler loop + flip `hasStream`/`streams` on the store — lands with Phase 1 (T1.3 store/scheduler).
+  - Deps: T2.1, ~~T2.2~~, T1.3
 
-- [ ] **T2.4 Recon harness (fallback)** ∥ — Scheduled job that auto-captures the payload of any match entering its live window for offline inspection (de-risks future site changes).
-  - Deps: T2.2
-  - Done when: harness dumps a timestamped payload artifact per live window.
+- [x] **T2.4 Recon harness (fallback)** — Covered by `backend/scripts/recon_poll.py` (stdlib poller that auto-captures any match entering its live window). Running now against today's matches.
 
 ---
 
