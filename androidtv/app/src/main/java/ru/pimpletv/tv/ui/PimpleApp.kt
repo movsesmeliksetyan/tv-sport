@@ -4,6 +4,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -11,8 +12,12 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.repeatOnLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import ru.pimpletv.tv.acestream.AceStream
 import ru.pimpletv.tv.data.MatchSummary
@@ -20,6 +25,8 @@ import ru.pimpletv.tv.data.Stream
 import ru.pimpletv.tv.ui.browse.BrowseScreen
 import ru.pimpletv.tv.ui.theme.Background
 import ru.pimpletv.tv.ui.theme.PimpleTvTheme
+
+private const val POLL_INTERVAL_MS = 60_000L  // refresh list + stream availability every 60s
 
 private data class Message(val title: String, val body: String)
 
@@ -46,6 +53,18 @@ fun PimpleApp(viewModel: MatchViewModel = viewModel()) {
 
         var chooser by remember { mutableStateOf<List<Stream>?>(null) }
         var message by remember { mutableStateOf<Message?>(null) }
+
+        // Lifecycle-aware polling: refresh on resume, then every POLL_INTERVAL_MS while
+        // foregrounded; repeatOnLifecycle cancels the loop when the app is backgrounded (T3.5).
+        val lifecycleOwner = LocalLifecycleOwner.current
+        LaunchedEffect(Unit) {
+            lifecycleOwner.repeatOnLifecycle(Lifecycle.State.RESUMED) {
+                while (true) {
+                    viewModel.poll()
+                    delay(POLL_INTERVAL_MS)
+                }
+            }
+        }
 
         fun play(stream: Stream) {
             chooser = null

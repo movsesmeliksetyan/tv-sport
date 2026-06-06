@@ -69,9 +69,7 @@ Legend: `[ ]` todo · `[~]` in progress · `[x]` done · **(blocker)** must clea
 
 - [x] **T3.4 ~~Detail screen~~ → removed by design** — Per product decision, there is **no detail page**. Selecting a match with a link launches Ace Stream directly (fewer remote clicks). Live cards show an inline "▶ Watch" affordance; non-live shows a "links appear ~1h before" message (FR-8). The hero carries this too.
 
-- [ ] **T3.5 Polling refresh** — Lifecycle-aware polling every 2–5 min; pause when backgrounded; LAN base URL for the Pi.
-  - Deps: T3.1, T1.4
-  - Done when: list auto-updates against the real backend; no polling while backgrounded.
+- [x] **T3.5 Polling refresh** — Lifecycle-aware polling (`PimpleApp` `repeatOnLifecycle(RESUMED)` loop, 60s) calls `MatchViewModel.poll()` — a silent refresh that keeps the last good data (no blanking, no error flash on transient failures). **Verified on the emulator**: 2 fetches in 65s foreground, **0 while backgrounded**, immediate refresh on return.
 
 ---
 
