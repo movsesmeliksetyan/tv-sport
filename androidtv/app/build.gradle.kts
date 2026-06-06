@@ -15,9 +15,9 @@ android {
         versionCode = 1
         versionName = "0.1.0"
 
-        // Production default: the Raspberry Pi backend, via the Pi-hole local DNS name.
-        // A real TV on the LAN (using Pi-hole for DNS) resolves pimpletv.pi -> the Pi.
-        buildConfigField("String", "API_BASE_URL", "\"http://pimpletv.pi:8090/\"")
+        // Production default: the Pi backend via Caddy reverse proxy (port-free).
+        // A real TV on the LAN (Pi-hole DNS) resolves pimpletv.pi -> Caddy -> backend:8090.
+        buildConfigField("String", "API_BASE_URL", "\"http://pimpletv.pi/\"")
     }
 
     buildTypes {
