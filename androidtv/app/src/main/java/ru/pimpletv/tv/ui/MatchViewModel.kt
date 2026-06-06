@@ -28,37 +28,49 @@ class MatchViewModel(
     private val _state = MutableStateFlow<BrowseUiState>(BrowseUiState.Loading)
     val state: StateFlow<BrowseUiState> = _state.asStateFlow()
 
-    init { refresh() }
-
     /** Fetch resolved streams for a match (detail endpoint) just before launching. */
     suspend fun streamsFor(id: String): List<Stream> =
         runCatching { repository.match(id).streams }.getOrDefault(emptyList())
 
+    /** Manual/full refresh — shows the loading state (e.g. retry from the error screen). */
     fun refresh() {
+        _state.value = BrowseUiState.Loading
+        fetch()
+    }
+
+    /** Silent poll — refreshes data without blanking the screen; keeps last good data on error. */
+    fun poll() = fetch()
+
+    private fun fetch() {
         viewModelScope.launch {
-            _state.value = BrowseUiState.Loading
             runCatching { repository.matches() }
-                .onSuccess { response ->
-                    val all = response.matches
-                    val live = all.filter { it.isLive() }
-                    val today = today()
-                    val days = all
-                        .filter { it.kickoffDate() != null }
-                        .groupBy { it.kickoffDate()!! }
-                        .toSortedMap()
-                        .map { (date, list) ->
-                            BrowseUiState.DaySection(
-                                label = dayLabel(date, today),
-                                matches = list.sortedBy { it.kickoff },
-                            )
-                        }
-                    _state.value = BrowseUiState.Content(
-                        live = live,
-                        days = days,
-                        featured = (live.ifEmpty { all }).take(6),
-                    )
+                .onSuccess { response -> _state.value = toContent(response.matches) }
+                .onFailure { e ->
+                    // Don't replace good content with an error during background polling.
+                    if (_state.value !is BrowseUiState.Content) {
+                        _state.value = BrowseUiState.Error(e.message ?: "Unknown error")
+                    }
                 }
-                .onFailure { _state.value = BrowseUiState.Error(it.message ?: "Unknown error") }
         }
+    }
+
+    private fun toContent(all: List<MatchSummary>): BrowseUiState.Content {
+        val today = today()
+        val days = all
+            .filter { it.kickoffDate() != null }
+            .groupBy { it.kickoffDate()!! }
+            .toSortedMap()
+            .map { (date, list) ->
+                BrowseUiState.DaySection(
+                    label = dayLabel(date, today),
+                    matches = list.sortedBy { it.kickoff },
+                )
+            }
+        val live = all.filter { it.isLive() }
+        return BrowseUiState.Content(
+            live = live,
+            days = days,
+            featured = (live.ifEmpty { all }).take(6),
+        )
     }
 }
