@@ -46,7 +46,31 @@ Kickoff is **time-only** on listings; the date is "today" (site lists today's ma
   `<p>Ссылки на трансляцию появятся приблизительно за час до эфира.</p>`
   → presence of this string ⇒ `hasStream = false`.
 
-## 4. Stream links — the critical unknown (T0.1 — IN PROGRESS)
+## 4. Stream links — RESOLVED (T0.1 ✅ confirmed 2026-06-05 19:09 MSK)
+
+**Hypothesis CONFIRMED: links are server-side rendered — no browser, no AJAX endpoint.** Captured from live matches 69163 & 69166 (fixtures `live_match_6916*.html`). The broadcast tab (`div.tabs-content.active`) holds a table:
+
+```html
+<table class="broadcast-table">
+  <thead><tr><th>Источник</th><th>Инструкция</th><th>Битрейт</th><th>Формат</th><th>FPS</th><th>Ссылка</th></tr></thead>
+  <tbody>
+    <tr>
+      <td><img ... alt="Ace Stream"> Ace Stream</td>
+      <td><a href="/manuals/ace-stream/">Читать</a></td>
+      <td>8000 kbps</td><td>1080p</td><td>50</td>
+      <td><a class="btn-watch" href="acestream://016d48fb89bb9505ab3f883db1bfb3a7c0a3eccc">Смотреть</a></td>
+    </tr>
+  </tbody>
+</table>
+```
+
+- One `<tr>` per source; the watch link is a full `acestream://<40-hex>` URI in `a.btn-watch`.
+- Quality = the **Формат** cell (e.g. `1080p`); bitrate/FPS also present. SopCast appears only in the prose (Превью) tab, not this table → naturally excluded.
+- Extractor parses `table.broadcast-table` rows (Strategy 0) → correct content ID + quality. Verified live: `resolve_streams` returns `acestream://016d…ccc (1080p)` for 69163, and "no stream" for the still-pre-window 69175.
+
+→ **Pi impact:** production scraper is fully browserless (`httpx` only). Playwright `recon_capture.py` is now unused for production.
+
+### Prior analysis (kept for context)
 
 ### 4a. JS analysis (done) — *the PRD's "JS-injected" assumption looks wrong*
 

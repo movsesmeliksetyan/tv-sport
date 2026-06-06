@@ -101,11 +101,16 @@ fun FeaturedHero(match: MatchSummary, onClick: () -> Unit, modifier: Modifier = 
                 color = TextSecondary,
             )
 
-            Button(onClick = onClick) {
-                Icon(Icons.Filled.PlayArrow, contentDescription = null)
+            if (match.isLive()) {
+                Button(onClick = onClick) {
+                    Icon(Icons.Filled.PlayArrow, contentDescription = null)
+                    Text("  Watch", style = MaterialTheme.typography.titleMedium)
+                }
+            } else {
                 Text(
-                    text = if (match.isLive()) "  Watch" else "  Details",
+                    text = "⏳  Stream links appear about an hour before kickoff",
                     style = MaterialTheme.typography.titleMedium,
+                    color = Accent,
                 )
             }
         }

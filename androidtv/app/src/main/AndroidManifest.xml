@@ -3,6 +3,17 @@
 
     <uses-permission android:name="android.permission.INTERNET" />
 
+    <!-- Android 11+ package visibility: allow detecting/launching Ace Stream (PRD §5, R5). -->
+    <queries>
+        <intent>
+            <action android:name="android.intent.action.VIEW" />
+            <data android:scheme="acestream" />
+        </intent>
+        <package android:name="org.acestream.node" />
+        <package android:name="org.acestream.media.atv" />
+        <package android:name="org.acestream.media" />
+    </queries>
+
     <!-- This is a TV app: no touchscreen, requires Leanback. -->
     <uses-feature
         android:name="android.hardware.touchscreen"

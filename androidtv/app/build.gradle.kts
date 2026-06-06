@@ -33,6 +33,7 @@ android {
     }
 
     compileOptions {
+        isCoreLibraryDesugaringEnabled = true  // java.time on minSdk 21
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
     }
@@ -56,6 +57,7 @@ dependencies {
     implementation(libs.androidx.tv.material)
 
     implementation(libs.coil.compose)
+    coreLibraryDesugaring(libs.desugar.jdk.libs)
 
     implementation(libs.retrofit)
     implementation(libs.retrofit.converter.gson)

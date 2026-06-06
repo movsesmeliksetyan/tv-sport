@@ -59,7 +59,7 @@ class CrawlScheduler:
 
     async def refresh_listing(self) -> None:
         now = _now_tz()
-        matches = await crawl(self._client, now.date(), now)
+        matches = await crawl(self._client, now)
         if matches:
             store.merge_listing(matches)
             log.info("listing refreshed: %d matches", len(matches))

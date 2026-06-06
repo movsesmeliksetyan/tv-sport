@@ -8,14 +8,15 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import ru.pimpletv.tv.data.MatchRepository
 import ru.pimpletv.tv.data.MatchSummary
+import ru.pimpletv.tv.data.Stream
 
 sealed interface BrowseUiState {
     data object Loading : BrowseUiState
     data class Error(val message: String) : BrowseUiState
+    data class DaySection(val label: String, val matches: List<MatchSummary>)
     data class Content(
         val live: List<MatchSummary>,
-        val football: List<MatchSummary>,
-        val hockey: List<MatchSummary>,
+        val days: List<DaySection>,
         val featured: List<MatchSummary>,
     ) : BrowseUiState
 }
@@ -29,18 +30,32 @@ class MatchViewModel(
 
     init { refresh() }
 
+    /** Fetch resolved streams for a match (detail endpoint) just before launching. */
+    suspend fun streamsFor(id: String): List<Stream> =
+        runCatching { repository.match(id).streams }.getOrDefault(emptyList())
+
     fun refresh() {
         viewModelScope.launch {
             _state.value = BrowseUiState.Loading
             runCatching { repository.matches() }
-                .onSuccess { all ->
-                    val live = all.filter { it.hasStream || it.status == "live" }
-                    val featured = (live.ifEmpty { all }).take(6)
+                .onSuccess { response ->
+                    val all = response.matches
+                    val live = all.filter { it.isLive() }
+                    val today = today()
+                    val days = all
+                        .filter { it.kickoffDate() != null }
+                        .groupBy { it.kickoffDate()!! }
+                        .toSortedMap()
+                        .map { (date, list) ->
+                            BrowseUiState.DaySection(
+                                label = dayLabel(date, today),
+                                matches = list.sortedBy { it.kickoff },
+                            )
+                        }
                     _state.value = BrowseUiState.Content(
                         live = live,
-                        football = all.filter { it.sport == "football" },
-                        hockey = all.filter { it.sport == "hockey" },
-                        featured = featured,
+                        days = days,
+                        featured = (live.ifEmpty { all }).take(6),
                     )
                 }
                 .onFailure { _state.value = BrowseUiState.Error(it.message ?: "Unknown error") }

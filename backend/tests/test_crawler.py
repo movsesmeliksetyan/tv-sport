@@ -22,13 +22,13 @@ def _read(name: str) -> str:
 
 
 def test_parses_six_football_matches():
-    ms = parse_listing(_read("listing_football.html"), DAY, NOON, MSK)
+    ms = parse_listing(_read("listing_football.html"), NOON, MSK)
     assert len(ms) == 6
     assert {m.id for m in ms} == {"69163", "69166", "69169", "69172", "69175", "69177"}
 
 
 def test_match_fields_populated():
-    ms = {m.id: m for m in parse_listing(_read("listing_football.html"), DAY, NOON, MSK)}
+    ms = {m.id: m for m in parse_listing(_read("listing_football.html"), NOON, MSK)}
     rus = ms["69175"]
     assert rus.home.name and rus.away.name
     assert rus.kickoff.hour == 20 and rus.kickoff.minute == 0
@@ -41,7 +41,7 @@ def test_match_fields_populated():
 
 
 def test_all_logos_absolute():
-    ms = parse_listing(_read("listing_football.html"), DAY, NOON, MSK)
+    ms = parse_listing(_read("listing_football.html"), NOON, MSK)
     for m in ms:
         for team in (m.home, m.away):
             if team.logo:
@@ -50,7 +50,39 @@ def test_all_logos_absolute():
 
 def test_empty_listing_yields_nothing():
     # hockey fixture has no matches today
-    assert parse_listing(_read("listing_hockey.html"), DAY, NOON, MSK) == []
+    assert parse_listing(_read("listing_hockey.html"), NOON, MSK) == []
+
+
+def test_parse_ru_date():
+    from app.scraper.crawler import parse_ru_date
+    assert parse_ru_date("6 июня", NOON, MSK) == date(2026, 6, 6)
+    assert parse_ru_date("8 июня", NOON, MSK) == date(2026, 6, 8)
+    assert parse_ru_date("not a date", NOON, MSK) is None
+
+
+def test_multi_day_listing_assigns_correct_dates():
+    # Synthetic listing spanning two days with streams-day headers.
+    html = """
+    <div class="streams-day">6 июня</div>
+    <div class="sport-tournament__block">
+      <a href="/football/100-a-b/" class="match-item _rates">
+        <div class="match-item__title"><div class="match-item__title-date"><div>16:00</div></div>
+        <div class="match-item__title-name">
+          <span class="table-item home"><span class="table-item__home-name">A</span></span>
+          <span class="table-item away"><span class="table-item__away-name">B</span></span></div></div></a>
+    </div>
+    <div class="streams-day">8 июня</div>
+    <div class="sport-tournament__block">
+      <a href="/football/200-c-d/" class="match-item _rates">
+        <div class="match-item__title"><div class="match-item__title-date"><div>21:00</div></div>
+        <div class="match-item__title-name">
+          <span class="table-item home"><span class="table-item__home-name">C</span></span>
+          <span class="table-item away"><span class="table-item__away-name">D</span></span></div></div></a>
+    </div>
+    """
+    ms = {m.id: m for m in parse_listing(html, NOON, MSK)}
+    assert ms["100"].kickoff.date() == date(2026, 6, 6)
+    assert ms["200"].kickoff.date() == date(2026, 6, 8)  # NOT stamped as today
 
 
 def test_build_kickoff():
@@ -74,6 +106,6 @@ async def test_crawl_combines_both_sports():
 
     transport = httpx.MockTransport(handler)
     async with httpx.AsyncClient(transport=transport) as client:
-        ms = await crawl(client, DAY, NOON)
+        ms = await crawl(client, NOON)
     assert len(ms) == 6  # 6 football + 0 hockey
     assert all(m.status == Status.scheduled for m in ms)  # NOON is before all kickoffs

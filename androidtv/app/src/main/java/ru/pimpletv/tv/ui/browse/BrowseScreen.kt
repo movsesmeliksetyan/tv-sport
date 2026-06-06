@@ -61,8 +61,9 @@ private fun Content(state: BrowseUiState.Content, onMatchClick: (MatchSummary) -
             }
         }
         matchRow("Live now", state.live, onMatchClick)
-        matchRow("Football today", state.football, onMatchClick)
-        matchRow("Hockey today", state.hockey, onMatchClick)
+        state.days.forEach { day ->
+            matchRow(day.label, day.matches, onMatchClick)
+        }
     }
 }
 
