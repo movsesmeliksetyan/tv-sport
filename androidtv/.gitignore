@@ -4,6 +4,11 @@
 build/
 local.properties
 .DS_Store
+
+# Release signing — never commit the keystore or its passwords
+keystore.properties
+*.keystore
+*.jks
 captures/
 .externalNativeBuild/
 .cxx/
