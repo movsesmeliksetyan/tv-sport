@@ -1,3 +1,5 @@
+@file:OptIn(androidx.compose.ui.ExperimentalComposeUiApi::class)
+
 package ru.pimpletv.tv.ui.browse
 
 import androidx.compose.foundation.layout.Arrangement
@@ -12,6 +14,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.focusRestorer
 import androidx.compose.ui.unit.dp
 import androidx.tv.material3.ExperimentalTvMaterial3Api
 import androidx.tv.material3.MaterialTheme
@@ -82,6 +85,9 @@ private fun androidx.compose.foundation.lazy.LazyListScope.matchRow(
                 modifier = Modifier.padding(horizontal = ScreenPaddingH),
             )
             LazyRow(
+                // Remember the last-focused card per row; on first entry, focus the first card
+                // (avoids the default "nearest column" jump between unrelated day rows).
+                modifier = Modifier.focusRestorer(),
                 contentPadding = PaddingValues(horizontal = ScreenPaddingH),
                 horizontalArrangement = Arrangement.spacedBy(20.dp),
             ) {
