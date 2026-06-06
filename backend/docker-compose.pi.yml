@@ -1,0 +1,17 @@
+# Raspberry Pi deployment (arm64). Live mode, port 8090 (8000 is taken by Portainer).
+# Deploy:  rsync backend/ to the Pi, then on the Pi:
+#   docker compose -f docker-compose.pi.yml up -d --build
+services:
+  api:
+    build: .
+    image: pimpletv-api:pi
+    container_name: pimpletv-api
+    restart: unless-stopped
+    ports:
+      - "8090:8000"          # host 8090 -> container 8000
+    environment:
+      PTV_MOCK_MODE: "false"            # real crawling
+      PTV_LISTING_REFRESH_SECONDS: "180"
+      PTV_STREAM_WINDOW_MINUTES: "75"
+      PTV_STREAM_REFRESH_SECONDS: "60"
+      PTV_TIMEZONE: "Europe/Moscow"

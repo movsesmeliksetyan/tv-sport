@@ -15,15 +15,19 @@ android {
         versionCode = 1
         versionName = "0.1.0"
 
-        // Base URL of the backend API. 10.0.2.2 = host loopback from the emulator.
-        // For a real TV on the LAN, override with the Pi's address, e.g. http://raspberrypi.local:8000/
-        buildConfigField("String", "API_BASE_URL", "\"http://10.0.2.2:8000/\"")
+        // Production default: the Raspberry Pi backend, via the Pi-hole local DNS name.
+        // A real TV on the LAN (using Pi-hole for DNS) resolves pimpletv.pi -> the Pi.
+        buildConfigField("String", "API_BASE_URL", "\"http://pimpletv.pi:8090/\"")
     }
 
     buildTypes {
         release {
             isMinifyEnabled = false
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
+        }
+        debug {
+            // Emulator can't resolve the .pi domain (it doesn't use Pi-hole), so hit the Pi's IP directly.
+            buildConfigField("String", "API_BASE_URL", "\"http://192.168.0.57:8090/\"")
         }
     }
 
