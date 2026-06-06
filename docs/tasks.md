@@ -101,9 +101,7 @@ Legend: `[ ]` todo · `[~]` in progress · `[x]` done · **(blocker)** must clea
   - Deps: T4.1
   - Done when: an invalid content ID shows a friendly error, not a crash.
 
-- [ ] **T5.4 Backend deploy** — Containerize; deploy to a VPS in a permitted egress region (R4); HTTPS; configure refresh cadence.
-  - Deps: T1.5, T2.3
-  - Done when: app points at the deployed URL and works end-to-end.
+- [x] **T5.4 Backend deploy (Raspberry Pi)** — Deployed dockerized on the Pi (`pi@192.168.0.56`, aarch64/Debian 12) in **live mode on port 8090** (8000 = Portainer), `restart: unless-stopped`. `docker-compose.pi.yml` + one-command `deploy-pi.sh` (rsync → rebuild → health). Reachable on the LAN at **http://pimpletv.pi:8090/** via a Pi-hole local DNS record (`pimpletv.pi → 192.168.0.57`). App base URL points at the domain (release) / Pi IP (debug). **Verified end-to-end**: emulator app loads the Pi's 14 real matches (`docs/screenshot-pi-backend.png`). *(VPS/HTTPS from the original PRD not needed — it's a private LAN box per the Pi decision.)*
 
 - [ ] **T5.5 End-to-end integration pass** — App on real TV → deployed backend → real match → Ace Stream launch.
   - Deps: T4.3, T5.4

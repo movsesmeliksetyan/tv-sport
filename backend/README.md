@@ -16,15 +16,32 @@ TV app can integrate against the real contract. The crawler + scheduler land in 
 - `python:3.11-slim` is multi-arch, so the same `Dockerfile` builds natively on the Pi.
 - Single-process in-memory store; fine for LAN load. Redis can back it later if needed.
 
-## Run with Docker (on the Pi)
+## Deploy to the Raspberry Pi (live)
+
+Deployed at **`pi@192.168.0.56`**, running in live mode on **port 8090** (8000 is taken by
+Portainer), container `pimpletv-api`, `restart: unless-stopped` (survives reboot).
+
+One command from this machine (rsync source → rebuild on the Pi → health check):
 
 ```bash
 cd backend
-docker compose up -d --build
-curl http://localhost:8000/api/health
+./deploy-pi.sh
 ```
 
-Cross-build from a dev machine: `docker buildx build --platform linux/arm64 -t pimpletv-api:arm64 .`
+Manually on the Pi:
+
+```bash
+cd ~/pimpletv-backend
+docker compose -f docker-compose.pi.yml up -d --build
+curl http://localhost:8090/api/health
+```
+
+Reachable on the LAN at **http://pimpletv.pi:8090/** (Pi-hole local DNS record
+`pimpletv.pi → 192.168.0.57`) or directly at `http://192.168.0.57:8090/`.
+The TV app uses `pimpletv.pi` in release builds and the Pi IP in debug builds (the emulator
+can't resolve the `.pi` domain).
+
+Cross-build the image elsewhere: `docker buildx build --platform linux/arm64 -t pimpletv-api:arm64 .`
 
 ## Run locally (dev)
 
