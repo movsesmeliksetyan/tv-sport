@@ -36,10 +36,10 @@ docker compose -f docker-compose.pi.yml up -d --build
 curl http://localhost:8090/api/health
 ```
 
-Reachable on the LAN at **http://pimpletv.pi:8090/** (Pi-hole local DNS record
-`pimpletv.pi → 192.168.0.57`) or directly at `http://192.168.0.57:8090/`.
-The TV app uses `pimpletv.pi` in release builds and the Pi IP in debug builds (the emulator
-can't resolve the `.pi` domain).
+Reachable on the LAN at **http://pimpletv.pi/** (Pi-hole DNS `pimpletv.pi → 192.168.0.57`
++ a Caddy reverse proxy → backend:8090), or directly at `http://192.168.0.57:8090/`.
+The TV app uses the port-free `http://pimpletv.pi/` in release builds and the direct
+`http://192.168.0.57:8090/` in debug builds (the emulator can't resolve `.pi` / route via Caddy).
 
 Cross-build the image elsewhere: `docker buildx build --platform linux/arm64 -t pimpletv-api:arm64 .`
 
