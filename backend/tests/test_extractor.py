@@ -58,6 +58,21 @@ def test_sopcast_is_dropped(extractor):
     assert all(s.type == "acestream" for s in streams)
 
 
+# ---- positive: REAL live-window captures (T0.1 confirmed) ----
+
+@pytest.mark.parametrize("fid,expected_id", [
+    ("69163", "016d48fb89bb9505ab3f883db1bfb3a7c0a3eccc"),
+    ("69166", "aca05dc506242324c1727525d0535ceda24f8dea"),
+])
+def test_real_live_capture(extractor, fid, expected_id):
+    streams = extractor.extract(_read(f"live_match_{fid}.html"))
+    assert len(streams) == 1
+    s = streams[0]
+    assert s.type == "acestream"
+    assert s.contentId == expected_id
+    assert s.quality == "1080p"  # parsed from the broadcast-table Format column
+
+
 # ---- negative: real pre-window placeholder page ----
 
 def test_real_placeholder_yields_no_streams(extractor):

@@ -50,9 +50,10 @@ def health() -> HealthResponse:
         1 for m in store.all() if abs(m.kickoff - now) <= window and m.status != Status.finished
     )
     last = store.last_successful_crawl
+    stale = last is not None and (now - last) > timedelta(seconds=settings.listing_refresh_seconds * 3)
     if store.count() == 0:
         status = "unhealthy"
-    elif last is not None and (now - last) > timedelta(seconds=settings.listing_refresh_seconds * 3):
+    elif stale and not settings.mock_mode:  # mock mode has no crawler refreshing the timestamp
         status = "degraded"
     else:
         status = "healthy"

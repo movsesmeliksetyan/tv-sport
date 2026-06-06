@@ -60,24 +60,40 @@ def is_placeholder(block: str) -> bool:
 
 
 class AceStreamHtmlExtractor:
-    """Server-rendered-HTML extractor (no browser). Implements `Extractor`."""
+    """Server-rendered-HTML extractor (no browser). Implements `Extractor`.
+
+    Confirmed live structure (recon §4): the broadcast tab holds a
+    `table.broadcast-table`, one `<tr>` per source with cells for bitrate /
+    format / fps and an `<a class="btn-watch" href="acestream://<40hex>">`.
+    """
 
     def extract(self, html: str) -> list[Stream]:
-        block = active_tab_html(html)
-        block_is_tab = bool(block)
-        if not block:
-            # Tab structure missing (e.g. removed by adblock JS) — fall back to whole doc.
-            block = html
+        node = HTMLParser(html).css_first("div.tabs-content.active")
+        block_is_tab = node is not None
+        block = (node.html or "") if node else html
         if is_placeholder(block):
             return []
 
         seen: set[str] = set()
         streams: list[Stream] = []
 
+        # Strategy 0 (preferred): broadcast-table rows — precise per-row quality.
+        table = node.css_first("table.broadcast-table") if node else None
+        if table is not None:
+            for tr in table.css("tr"):
+                row = tr.html or ""
+                cid = _id_from(row)  # acestream:// or content_id; sop:// rows yield None
+                if not cid:
+                    continue
+                row_text = tr.text(separator=" ") or ""  # space-join cells so \b regexes work
+                self._add(streams, seen, cid, _first(QUALITY_RE, row_text), _first(LANG_RE, row_text))
+            if streams:
+                return streams
+
         # Strategy A: per-anchor — captures each link's own quality/language (FR-6 chooser).
-        node = HTMLParser(html).css_first("div.tabs-content.active") if block_is_tab else HTMLParser(html).body
-        if node is not None:
-            for a in node.css("a"):
+        scope = node if block_is_tab else HTMLParser(html).body
+        if scope is not None:
+            for a in scope.css("a"):
                 href = a.attributes.get("href") or ""
                 cid = _id_from(href) or _id_from(_attrs_blob(a))
                 if not cid:

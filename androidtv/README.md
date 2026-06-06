@@ -1,14 +1,17 @@
 # PimpleTV — Android TV App
 
-Kotlin + AndroidX **Leanback** TV app. Browses matches from the backend API and (Phase 4)
-hands off to Ace Stream via `acestream://`. Implements the contract in
-[`../docs/api/openapi.yaml`](../docs/api/openapi.yaml).
+Kotlin + **Jetpack Compose for TV** (`androidx.tv:tv-material`). Browses matches from the
+backend API and (Phase 4) hands off to Ace Stream via `acestream://`. Implements the contract
+in [`../docs/api/openapi.yaml`](../docs/api/openapi.yaml).
 
-## Status — Phase 0 scaffold (T0.5b)
+## Status — Phase 3 (browse + detail)
 
-Runnable skeleton: a `BrowseSupportFragment` that fetches `/api/matches` and groups cards by
-sport with a LIVE badge. Detail, stream chooser, Ace Stream hand-off, and polling come in
-Phases 3–5 ([../docs/tasks.md](../docs/tasks.md)).
+Working app, verified on the Television_4K emulator (`docs/screenshot-*.png`):
+- **Featured hero** for the top live/upcoming match (logos via Coil, focusable Watch).
+- Focus-scaled **match cards** in "Live now / Football / Hockey" rows with a LIVE badge.
+- **Detail screen** with teams, kickoff, channel, and a Watch / "links appear ~1h before" state.
+
+Remaining: polling refresh (T3.5), Ace Stream hand-off (Phase 4), more states (Phase 5).
 
 ## Open in Android Studio
 
@@ -33,14 +36,18 @@ cd ../backend && docker compose up -d --build   # mock data until Phase 1
 
 Uses the Gradle wrapper + Android Studio's bundled JDK 21:
 ```bash
-export JAVA_HOME="$HOME/Applications/Android Studio.app/Contents/jbr/Contents/Home"
-./gradlew assembleDebug      # requires the Android SDK installed (Studio does this)
+export JAVA_HOME="/Applications/Android Studio.app/Contents/jbr/Contents/Home"
+./gradlew assembleDebug
+# run on the TV emulator:
+adb install -r app/build/outputs/apk/debug/app-debug.apk
+adb shell monkey -p ru.pimpletv.tv -c android.intent.category.LEANBACK_LAUNCHER 1
 ```
 
 ## Tech
 
-Kotlin · Leanback 1.0.0 · Retrofit 2.11 + OkHttp · Glide 4.16 · Coroutines · minSdk 21 / target 35 ·
-AGP 8.7.3 / Gradle 8.11.1 (Kotlin DSL + version catalog).
+Kotlin · Jetpack **Compose for TV** (`androidx.tv:tv-material` 1.0.0, Compose BOM) · Coil ·
+Retrofit 2.11 + OkHttp · Coroutines · minSdk 21 / target 35 · AGP 8.7.3 / Gradle 8.11.1
+(Kotlin DSL + version catalog).
 
 ## Layout
 
@@ -48,9 +55,13 @@ AGP 8.7.3 / Gradle 8.11.1 (Kotlin DSL + version catalog).
 app/src/main/
   AndroidManifest.xml          LEANBACK_LAUNCHER, leanback feature, TV banner
   java/ru/pimpletv/tv/
-    MainActivity.kt            hosts the browse fragment
-    MainFragment.kt            BrowseSupportFragment (rows of match cards)
+    MainActivity.kt            ComponentActivity -> setContent { PimpleApp() }
     data/                      Retrofit service, DTOs (contract), repository
-    ui/MatchCardPresenter.kt   ImageCardView + LIVE badge
-  res/                         theme (Theme.Leanback), strings, colors, banner
+    ui/
+      PimpleApp.kt             root nav (browse <-> detail), theme wrapper
+      MatchViewModel.kt        loads matches -> BrowseUiState
+      browse/                  BrowseScreen, FeaturedHero, MatchCard, LiveBadge
+      detail/DetailScreen.kt   match detail + Watch
+      theme/                   Compose TV theme (color, type)
+  res/values/                  Theme.PimpleTV (no-action-bar shell), colors
 ```

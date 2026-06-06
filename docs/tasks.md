@@ -13,10 +13,7 @@ Legend: `[ ]` todo · `[~]` in progress · `[x]` done · **(blocker)** must clea
 
 > **Deployment target:** backend runs **dockerized on a local Raspberry Pi (arm64)**. Runtime image is browserless (`httpx` + `selectolax`); Playwright is recon/fallback only, kept out of the Pi image.
 
-- [~] **T0.1 Live-page recon (S1)** — Open a match page within ~1h of kickoff with browser dev-tools. Capture the exact AJAX endpoint + request headers + JSON/HTML response carrying the Ace Stream content IDs.
-  - Deps: none · **(blocker for T2.x)**
-  - Done when: raw request/response saved to `backend/tests/fixtures/live_match_<id>.{html,json}` and the field path to the 40-char content ID is documented.
-  - **Status:** JS analysis done — **no script fetches stream links** (`ajax-tabs.js` is tab-switching only; `detect.js` is adblock/ads). Hypothesis: links are **server-rendered** within the window, not JS-injected → likely **no browser needed on the Pi**. Cheap-path poller `backend/scripts/recon_poll.py` (stdlib, no browser) is **running** to capture the first live window (~18:00 MSK today); Playwright `recon_capture.py` is the fallback. See [recon-findings.md §4](recon-findings.md).
+- [x] **T0.1 Live-page recon (S1)** — **DONE (confirmed live 2026-06-05 19:09 MSK).** Links are **server-side rendered** into a `table.broadcast-table` in `div.tabs-content.active` — no AJAX, no browser. Each row = one source with bitrate/format/fps + an `acestream://<40-hex>` link; SopCast only in the prose tab. Real fixtures saved (`live_match_69163.html`, `live_match_69166.html`); extractor verified end-to-end (`resolve_streams` → `acestream://016d…ccc (1080p)`). See [recon-findings.md §4](recon-findings.md).
 
 - [x] **T0.2 Listing-page recon** — Save static HTML of `/`, `/category/football/`, `/category/hockey/` and a few match pages (pre-window). Identify selectors for teams, kickoff, tournament, channel, stadium, logos.
   - Done: fixtures saved under `backend/tests/fixtures/` (`listing_*.html`, `match_69175.html`, `wp_post_69175.json`); selector map in [recon-findings.md](recon-findings.md). Site is WordPress; metadata is in static HTML (no browser needed).
@@ -32,32 +29,23 @@ Legend: `[ ]` todo · `[~]` in progress · `[x]` done · **(blocker)** must clea
 
 ## Phase 1 — Backend: Crawler + API  *(∥ with Phase 3)*
 
-- [ ] **T1.1 Match model + normalizer** — Pydantic `Match`/`Team`/`Stream` models matching the contract; helpers to validate 40-char hex content IDs and parse kickoff to ISO+tz.
-  - Deps: T0.3
-  - Done when: model round-trips the OpenAPI examples; unit tests pass.
+- [x] **T1.1 Match model + normalizer** — Pydantic models (`app/models.py`) match the contract; `crawler.build_kickoff` parses HH:MM → tz-aware datetime (Europe/Moscow), `derive_status` from kickoff vs now, 40-hex validation lives in the `Stream` model. Tested.
 
-- [ ] **T1.2 Listing crawler** — Fetch + parse the three listing pages → `Match[]` metadata (no streams). Plain HTTP (httpx), fixture-tested.
-  - Deps: T0.2, T1.1 · **(blocker for T1.4)**
-  - Done when: crawler parses `listing_*.html` fixtures into correct `Match` objects; live smoke run returns today's matches.
+- [x] **T1.2 Listing crawler** — `app/scraper/crawler.py`: httpx + selectolax, selectors per recon §2. Two live-data fixes after testing against the real site: (a) **multi-day** — the listing spans ~4 days grouped by `<div class="streams-day">6 июня</div>` headers; the crawler now parses Russian dates per day-block instead of stamping all as today; (b) **live matches** show the game clock (`13'`) + `liveTime` class instead of HH:MM → detected as `live`, kickoff derived from elapsed minutes. 10 crawler tests + verified live (14 matches across 2026-06-06…09).
 
-- [ ] **T1.3 Cache + scheduler** — In-memory (or Redis) store; APScheduler job refreshing listings every 2–5 min (configurable).
-  - Deps: T1.1
-  - Done when: store holds latest crawl; refresh interval configurable via env.
+- [x] **T1.3 Cache + scheduler** — `app/scheduler.py`: `AsyncIOScheduler`, listing refresh + resolution jobs on env-configurable cadences; `store.merge_listing` carries resolved streams across re-crawls. Initial crawl on boot so the API is never empty.
 
-- [ ] **T1.4 API endpoints** — FastAPI serving `/api/matches`, `/api/matches/{id}`, `/api/health` from cache (never block on a live scrape).
-  - Deps: T1.2, T1.3 · **(blocker for T3.5)**
-  - Done when: endpoints return real crawled data and pass contract validation against `openapi.yaml`.
+- [x] **T1.4 API endpoints** — Endpoints now serve **real crawled data** in live mode (`PTV_MOCK_MODE=false`). Verified: app boots → scheduler → 6 real matches via `/api/matches`, health green. Requests served from cache, never blocking on a scrape.
 
-- [ ] **T1.5 Health & observability** — `/api/health` reports last successful crawl time + match count; alarm/log when 0 matches parsed (R2 early-warning).
-  - Deps: T1.4
-  - Done when: health flips to unhealthy on a forced parse failure.
+- [x] **T1.5 Health & observability** — `/api/health` reports `lastSuccessfulCrawl` + counts; crawler logs an **R2 error on 0-parse** and health returns `unhealthy` when `matchCount==0`.
+
+> **Phase 1 complete + T2.3 fully wired:** the scheduler's `resolve_due` calls the Phase 2 resolver for in-window matches and flips `hasStream`/`streams` (clearing on finish). Match-page URL uses an id-only slug, which the site 301-redirects to canonical (`follow_redirects=True`). Live stream resolution itself stays **provisional** on the real markup (T0.1) — tonight's 17:45 window is the first real test.
 
 ---
 
 ## Phase 2 — Backend: Stream Extractor
 
-- [x] **T2.1 Extractor interface + fixture tests** — `Extractor` protocol + `AceStreamHtmlExtractor` (`app/scraper/extractor.py`): anchor-aware + regex sweep, per-link quality/language, dedup, 40-hex validation, SopCast dropped, bare-hex ignored without Ace Stream context. 8 fixture tests pass (positive = synthetic populated tab; negative = real `match_69175.html` placeholder).
-  - **Provisional:** synthetic fixture stands in until the real live payload (T0.1) lands; if real markup differs, adjust only the selectors/patterns — the protocol stays. See [recon-findings.md §4](recon-findings.md).
+- [x] **T2.1 Extractor interface + fixture tests** — `Extractor` protocol + `AceStreamHtmlExtractor` (`app/scraper/extractor.py`). **Validated against REAL live captures (T0.1 done):** Strategy 0 parses `table.broadcast-table` rows → content ID + quality (1080p); anchor + regex sweep remain as fallbacks; dedup, 40-hex validation, SopCast dropped. 10 fixture tests pass incl. the two real live matches. No longer provisional.
 
 - [ ] **T2.2 Playwright renderer** — *Likely unnecessary.* JS analysis (recon §4a) found no AJAX loader → links appear server-rendered, so the cheap httpx path (T2.3) should suffice. Keep `recon_capture.py` as fallback; only build this if the live capture proves links are JS-injected late.
   - Deps: T2.1
@@ -69,25 +57,19 @@ Legend: `[ ]` todo · `[~]` in progress · `[x]` done · **(blocker)** must clea
 
 ---
 
-## Phase 3 — TV App: Skeleton  *(∥ with Phase 1, against mock)*
+## Phase 3 — TV App  *(migrated to Jetpack Compose for TV)*
 
-- [ ] **T3.1 API client + DTOs** — Generate DTOs from `openapi.yaml`; Retrofit/OkHttp client; coroutine repository.
-  - Deps: T0.3, T0.4 · **(blocker for T3.2)**
-  - Done when: client fetches from the mock server and maps to DTOs in a unit test.
+> **UI stack change:** replaced classic Leanback with **Jetpack Compose for TV** (`androidx.tv:tv-material` 1.0.0 + Compose BOM, Coil for images) to match the modern Android TV design system (Featured hero, focus-scaled cards). Data layer (Retrofit/Gson) unchanged.
 
-- [ ] **T3.2 Browse screen (Leanback)** — `BrowseSupportFragment` with rows "Live now", "Football today", "Hockey today"; focusable cards (teams, kickoff, tournament) with Glide-loaded logos.
-  - Deps: T3.1 · **(blocker for T3.3)**
-  - Done when: rows render mock data; full D-pad navigation works on emulator.
+- [x] **T3.1 API client + DTOs** — Retrofit/Gson client + DTOs from the contract + `MatchRepository` (`data/`). Drives the live UI on the emulator.
 
-- [ ] **T3.3 LIVE/link badge** — Card overlay driven by `hasStream` (FR-2, FR-4).
-  - Deps: T3.2
-  - Done when: cards visibly differ for `hasStream` true vs false.
+- [x] **T3.2 Browse screen** — Compose `BrowseScreen`: a `LazyColumn` with a **Featured hero** + `LazyRow` rows "Live now / Football / Hockey" of focus-scaled `MatchCard`s; overscan-safe margins, enlarged TV type, dark high-contrast theme. **Verified on the Television_4K emulator**: real mock data, real team logos (Coil), D-pad navigation. See `docs/screenshot-browse.png`, `screenshot-rows.png`.
 
-- [ ] **T3.4 Detail screen** — Match info (channel, stadium, time); "Watch" button enabled only when `hasStream` (FR-10).
-  - Deps: T3.2
-  - Done when: selecting a card opens detail; Watch enabled/disabled correctly.
+- [x] **T3.3 LIVE/link badge** — `LiveBadge` on cards + hero, driven by `hasStream`/status (FR-2, FR-4). Visible in screenshots.
 
-- [ ] **T3.5 Polling refresh** — Lifecycle-aware repository polling every 2–5 min; pause when backgrounded; swap mock → real API base URL.
+- [x] **T3.4 ~~Detail screen~~ → removed by design** — Per product decision, there is **no detail page**. Selecting a match with a link launches Ace Stream directly (fewer remote clicks). Live cards show an inline "▶ Watch" affordance; non-live shows a "links appear ~1h before" message (FR-8). The hero carries this too.
+
+- [ ] **T3.5 Polling refresh** — Lifecycle-aware polling every 2–5 min; pause when backgrounded; LAN base URL for the Pi.
   - Deps: T3.1, T1.4
   - Done when: list auto-updates against the real backend; no polling while backgrounded.
 
@@ -95,21 +77,13 @@ Legend: `[ ]` todo · `[~]` in progress · `[x]` done · **(blocker)** must clea
 
 ## Phase 4 — Ace Stream Hand-off
 
-- [ ] **T4.1 Launcher** — `launchAceStream(contentId)` building `acestream://<id>` ACTION_VIEW intent with NEW_TASK (PRD §5.1); content-ID vs full-URI handling (§5.3).
-  - Deps: T3.4 · **(blocker for T4.2)**
-  - Done when: Watch launches Ace Stream with a real content ID on a TV device.
+- [x] **T4.1 Launcher** — `acestream/AceStream.kt`: `launch()` builds an `acestream://<id>` ACTION_VIEW intent with NEW_TASK, handles content-id vs full-URI (§5.3). **Verified end-to-end on the emulator**: Watch → Ace Stream (`org.acestream.node/ContentStartActivity`) received the content id and began loading. See `docs/screenshot-acestream-launch.png`.
 
-- [ ] **T4.2 Install detection + prompt** — `isAceStreamInstalled()` across `org.acestream.media.atv` / `org.acestream.media`; if missing, show install-prompt screen with documented APK source (FR-7, R3).
-  - Deps: T4.1
-  - Done when: with Ace Stream uninstalled, the prompt shows instead of a crash.
+- [x] **T4.2 Install detection + prompt** — Detection resolves the `acestream://` VIEW intent (robust to package differences), falls back to a package list; if absent, a `MessageDialog` with sideload guidance (FR-7, R3). **Required an Android 11+ `<queries>` manifest entry** (scheme `acestream` + packages) — without it, detection AND launch silently fail (this was the "says I don't have it" bug).
 
-- [ ] **T4.3 Package-name verification on device** — Confirm actual Ace Stream TV package name(s) on the target hardware; update the detection list (R5).
-  - Deps: T4.2
-  - Done when: detection list matches the real installed package on the test TV.
+- [x] **T4.3 Package-name verification** — Real package on the test device is **`org.acestream.node`** (not the PRD's `org.acestream.media*`); added to the list + `<queries>`. Confirmed via `pm query-activities` (R5).
 
-- [ ] **T4.4 Stream chooser** — When `streams.length > 1`, show a quality/source picker before launch (FR-6).
-  - Deps: T4.1
-  - Done when: multi-stream match shows chooser; single-stream launches directly.
+- [x] **T4.4 Stream chooser** — `StreamChooser` overlay (`ui/Overlays.kt`): single stream launches directly, multiple shows a compact quality/source picker before launch (FR-6). Modal, not a page.
 
 ---
 
