@@ -59,15 +59,16 @@ def fetch(url: str) -> str | None:
 
 
 def list_today_matches() -> list[tuple[str, str]]:
-    """Return [(match_id, full_url)] from football + hockey listings."""
+    """Return [(match_id, full_url)] from the football listing."""
     found: dict[str, str] = {}
-    for sport in ("football", "hockey"):
-        html = fetch(f"{BASE}/category/{sport}/")
-        if not html:
-            continue
-        for href in re.findall(r'href="(/[a-z]+/(\d+)-[^"]+)"', html):
-            path, mid = href
-            found[mid] = BASE + path
+
+    html = fetch(BASE)
+    if not html:
+        return []
+
+    for path, mid in re.findall(r'href="(/[a-z]+/(\d+)-[^"]+)"', html):
+        found[mid] = BASE + path
+
     return sorted(found.items())
 
 
